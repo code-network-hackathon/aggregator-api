@@ -46,7 +46,7 @@ func main() {
 	router.GET("/products", getProducts)
 	router.POST("/refresh", postRefresh)
 
-	router.Run("localhost:8080")
+	router.Run("https://aggregator-api.onrender.com")
 }
 
 // return `realProducts` as JSON
