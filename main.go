@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -27,16 +28,18 @@ type refresh struct {
 	Refresh string `json:"refresh"`
 }
 
-// dummy seed data
-var products = []product{
+var timeLastUpdated = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.Local)
+
+var realProducts = []product{
 	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: 7.50, Rrp: 10.00, DiscountAmount: 10.00 - 7.50, DiscountPercentage: 7.50 / 10.00},
 	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 8.50, Rrp: 10.00, DiscountAmount: 10.00 - 8.50, DiscountPercentage: 8.50 / 10.00},
 	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 12.50, Rrp: 13.50, DiscountAmount: 13.50 - 12.50, DiscountPercentage: 12.50 / 13.50},
 }
-
-var timeLastUpdated = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.Local)
-
-var realProducts = []string{"asfasfasf"}
+var realProducts2 = []product{
+	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: 7.50, Rrp: 10.00, DiscountAmount: 10.00 - 7.50, DiscountPercentage: 1 - (7.50 / 10.00)},
+	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 8.50, Rrp: 10.00, DiscountAmount: 10.00 - 8.50, DiscountPercentage: 1 - (8.50 / 10.00)},
+	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 12.50, Rrp: 13.50, DiscountAmount: 13.50 - 12.50, DiscountPercentage: 1 - (12.50 / 13.50)},
+}
 
 func main() {
 	router := gin.Default()
@@ -52,9 +55,39 @@ func getProducts(c *gin.Context) {
 	currentTime := time.Now()
 	duration := currentTime.Sub(timeLastUpdated)
 	if duration >= 4*time.Hour {
+		fmt.Printf("Old products! Fetching new data...")
+		timeLastUpdated = currentTime
 		startWebScrapers()
 	}
-	c.IndentedJSON(http.StatusOK, realProducts)
+
+	sortParam := c.Query("sort")
+	sortedProducts := sortProducts(sortParam)
+
+	c.IndentedJSON(http.StatusOK, sortedProducts)
+}
+
+func sortProducts(sortMethod string) []product {
+	toSort := append([]product{}, realProducts2...)
+
+	switch sortMethod {
+	case "lowest-price":
+		sort.Slice(toSort, func(i, j int) bool {
+			return toSort[i].CurrentPrice < toSort[j].CurrentPrice
+		})
+	case "highest-percentage":
+		sort.Slice(toSort, func(i, j int) bool {
+			return toSort[i].DiscountPercentage > toSort[j].DiscountPercentage
+		})
+	case "biggest-discount-amount":
+		sort.Slice(toSort, func(i, j int) bool {
+			return toSort[i].DiscountAmount > toSort[j].DiscountAmount
+		})
+	default:
+		sort.Slice(toSort, func(i, j int) bool {
+			return toSort[i].DiscountPercentage > toSort[j].DiscountPercentage
+		})
+	}
+	return toSort
 }
 
 // if POST receives {refresh: "true"} then fetch new data to hold in memory
@@ -75,8 +108,8 @@ func postRefresh(c *gin.Context) {
 	}
 }
 
-// TODO: this must be changed to type product
 func startWebScrapers() {
+	// TODO: CHANGE THIS TO THE REAL MEMORY ARRAY <-----
 	realProducts = nil
 
 	// TODO: retrieve endpoints for web scrapers
@@ -97,7 +130,7 @@ func startWebScrapers() {
 }
 
 func fetchProductsFromScraper(url string) {
-	fmt.Printf("Fetching quotes from %s\n", url)
+	fmt.Printf("Scraping data from: %s\n", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -108,5 +141,7 @@ func fetchProductsFromScraper(url string) {
 		log.Fatalln(err)
 	}
 	// TODO: append as product type
-	realProducts = append(realProducts, string(body))
+	// TODO: CHANGE THIS TO THE REAL MEMORY ARRAY <-----
+	fmt.Printf("body: %v\n", body)
+	// realProducts = append(realProducts, string(body))
 }
