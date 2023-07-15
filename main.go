@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -46,7 +47,13 @@ func main() {
 	router.GET("/products", getProducts)
 	router.POST("/refresh", postRefresh)
 
-	router.Run("https://aggregator-api.onrender.com:8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if err := router.Run(":" + port); err != nil {
+		log.Panicf("error: %s", err)
+	}
 }
 
 // return `realProducts` as JSON
