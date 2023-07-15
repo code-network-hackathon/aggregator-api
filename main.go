@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,7 +34,9 @@ var products = []product{
 	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 12.50, Rrp: 13.50, DiscountAmount: 13.50 - 12.50, DiscountPercentage: 12.50 / 13.50},
 }
 
-var realProducts = []product{}
+var timeLastUpdated = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.Local)
+
+var realProducts = []string{"asfasfasf"}
 
 func main() {
 	router := gin.Default()
@@ -43,24 +46,27 @@ func main() {
 	router.Run("localhost:8080")
 }
 
-// getProducts responds with all the products as JSON
+// return `realProducts` as JSON
 func getProducts(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, products)
+	// Check if products updated within 4 hours
+	currentTime := time.Now()
+	duration := currentTime.Sub(timeLastUpdated)
+	if duration >= 4*time.Hour {
+		startWebScrapers()
+	}
+	c.IndentedJSON(http.StatusOK, realProducts)
 }
 
 // if POST receives {refresh: "true"} then fetch new data to hold in memory
 func postRefresh(c *gin.Context) {
 	var refresh refresh
 
-	// Call BindJSON to bind the received JSON to refresh
 	if err := c.BindJSON(&refresh); err != nil {
 		return
 	}
 
 	if refresh.Refresh == "true" {
-		// TODO: add refresh logic
 		startWebScrapers()
-		// TODO: save to memory
 		c.IndentedJSON(http.StatusAccepted, "Successfully Refreshed Products")
 		return
 	} else {
@@ -69,7 +75,10 @@ func postRefresh(c *gin.Context) {
 	}
 }
 
-func startWebScrapers() []product {
+// TODO: this must be changed to type product
+func startWebScrapers() {
+	realProducts = nil
+
 	// TODO: retrieve endpoints for web scrapers
 
 	var wg sync.WaitGroup
@@ -85,14 +94,10 @@ func startWebScrapers() []product {
 
 	}
 	wg.Wait()
-
-	return products
 }
 
 func fetchProductsFromScraper(url string) {
-	fmt.Printf("Worker starting %s\n", url)
-	// time.Sleep(time.Second)
-	// fmt.Printf("Worker done %s \n", url)
+	fmt.Printf("Fetching quotes from %s\n", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -102,7 +107,6 @@ func fetchProductsFromScraper(url string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	requestBody := string(body)
-	println(requestBody)
-	println("^^^^^^^^^^^^^^^")
+	// TODO: append as product type
+	realProducts = append(realProducts, string(body))
 }
