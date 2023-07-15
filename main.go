@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -65,4 +69,40 @@ func postRefresh(c *gin.Context) {
 	}
 }
 
-func startWebScrapers() {}
+func startWebScrapers() []product {
+	// TODO: retrieve endpoints for web scrapers
+
+	var wg sync.WaitGroup
+	urls := []string{"https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2", "https://jsonplaceholder.typicode.com/posts/3"}
+
+	for i := range urls {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			fetchProductsFromScraper(urls[i])
+		}()
+
+	}
+	wg.Wait()
+
+	return products
+}
+
+func fetchProductsFromScraper(url string) {
+	fmt.Printf("Worker starting %s\n", url)
+	// time.Sleep(time.Second)
+	// fmt.Printf("Worker done %s \n", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	requestBody := string(body)
+	println(requestBody)
+	println("^^^^^^^^^^^^^^^")
+}
