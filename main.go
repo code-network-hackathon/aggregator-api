@@ -44,6 +44,7 @@ var realProducts2 = []product{
 
 func main() {
 	router := gin.Default()
+	router.Use(CORSMiddleware())
 	router.GET("/products", getProducts)
 	router.POST("/refresh", postRefresh)
 
