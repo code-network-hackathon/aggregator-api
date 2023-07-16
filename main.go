@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -15,14 +16,14 @@ import (
 
 // product declaration
 type product struct {
-	ItemName           string  `json:"itemName"`
-	Retailer           string  `json:"retailer"`
-	ProductLink        string  `json:"productLink"`
-	ImageLink          string  `json:"imageLink"`
-	CurrentPrice       float64 `json:"currentPrice"`
-	Rrp                float64 `json:"rrp"`
-	DiscountAmount     float64 `json:"discountAmount"`
-	DiscountPercentage float64 `json:"discountPercentage"`
+	ItemName           string `json:"itemName"`
+	Retailer           string `json:"retailer"`
+	ProductLink        string `json:"productLink"`
+	ImageLink          string `json:"imageLink"`
+	CurrentPrice       string `json:"currentPrice"`
+	Rrp                string `json:"rrp"`
+	DiscountAmount     string `json:"discountAmount"`
+	DiscountPercentage string `json:"discountPercentage"`
 }
 
 type refresh struct {
@@ -32,14 +33,14 @@ type refresh struct {
 var timeLastUpdated = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.Local)
 
 var realProducts = []product{
-	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: 7.50, Rrp: 10.00, DiscountAmount: 10.00 - 7.50, DiscountPercentage: 7.50 / 10.00},
-	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 8.50, Rrp: 10.00, DiscountAmount: 10.00 - 8.50, DiscountPercentage: 8.50 / 10.00},
-	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 12.50, Rrp: 13.50, DiscountAmount: 13.50 - 12.50, DiscountPercentage: 12.50 / 13.50},
+	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: "7.50", Rrp: "10.00", DiscountAmount: "2.50", DiscountPercentage: "0.15"},
+	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "8.50", Rrp: "10.00", DiscountAmount: "1.50", DiscountPercentage: "0.12"},
+	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "12.50", Rrp: "13.50", DiscountAmount: "1", DiscountPercentage: "0.05"},
 }
 var realProducts2 = []product{
-	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: 7.50, Rrp: 10.00, DiscountAmount: 10.00 - 7.50, DiscountPercentage: 1 - (7.50 / 10.00)},
-	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 8.50, Rrp: 10.00, DiscountAmount: 10.00 - 8.50, DiscountPercentage: 1 - (8.50 / 10.00)},
-	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: 12.50, Rrp: 13.50, DiscountAmount: 13.50 - 12.50, DiscountPercentage: 1 - (12.50 / 13.50)},
+	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: "7.50", Rrp: "10.00", DiscountAmount: "2.50", DiscountPercentage: "0.15"},
+	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "8.50", Rrp: "10.00", DiscountAmount: "1.50", DiscountPercentage: "0.12"},
+	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "12.50", Rrp: "13.50", DiscountAmount: "1", DiscountPercentage: "0.05"},
 }
 
 func main() {
@@ -91,7 +92,7 @@ func getProducts(c *gin.Context) {
 }
 
 func sortProducts(sortMethod string) []product {
-	toSort := append([]product{}, realProducts2...)
+	toSort := append([]product{}, realProducts...)
 
 	switch sortMethod {
 	case "lowest-price":
@@ -139,7 +140,7 @@ func startWebScrapers() {
 	// TODO: retrieve endpoints for web scrapers
 
 	var wg sync.WaitGroup
-	urls := []string{"https://jsonplaceholder.typicode.com/posts/1", "https://jsonplaceholder.typicode.com/posts/2", "https://jsonplaceholder.typicode.com/posts/3"}
+	urls := []string{"https://aldi-web-scraper.onrender.com/products"}
 
 	for i := range urls {
 		wg.Add(1)
@@ -164,8 +165,20 @@ func fetchProductsFromScraper(url string) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	// Unmarshal the JSON data into a slice of Product objects
+	var products []product
+	err = json.Unmarshal(body, &realProducts)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	print(products)
+	print("hello")
+
 	// TODO: append as product type
 	// TODO: CHANGE THIS TO THE REAL MEMORY ARRAY <-----
-	fmt.Printf("body: %v\n", body)
-	// realProducts = append(realProducts, string(body))
+	// fmt.Printf("body: %v\n", string(body))
+	defer resp.Body.Close()
+	// realProducts = append(realProducts, )
 }
