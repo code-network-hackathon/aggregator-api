@@ -32,16 +32,7 @@ type refresh struct {
 
 var timeLastUpdated = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.Local)
 
-var realProducts = []product{
-	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: "7.50", Rrp: "10.00", DiscountAmount: "2.50", DiscountPercentage: "0.15"},
-	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "8.50", Rrp: "10.00", DiscountAmount: "1.50", DiscountPercentage: "0.12"},
-	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "12.50", Rrp: "13.50", DiscountAmount: "1", DiscountPercentage: "0.05"},
-}
-var realProducts2 = []product{
-	{ItemName: "Toothbrush", Retailer: "Coles", ProductLink: "www.coles.com.au", ImageLink: "www.coles.com.au", CurrentPrice: "7.50", Rrp: "10.00", DiscountAmount: "2.50", DiscountPercentage: "0.15"},
-	{ItemName: "Mouthwash", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "8.50", Rrp: "10.00", DiscountAmount: "1.50", DiscountPercentage: "0.12"},
-	{ItemName: "Chicken Thigh", Retailer: "Woolworths", ProductLink: "www.woolworths.com.au", ImageLink: "www.woolworths.com.au", CurrentPrice: "12.50", Rrp: "13.50", DiscountAmount: "1", DiscountPercentage: "0.05"},
-}
+var realProducts = []product{}
 
 func main() {
 	router := gin.Default()
@@ -88,11 +79,14 @@ func getProducts(c *gin.Context) {
 	sortParam := c.Query("sort")
 	sortedProducts := sortProducts(sortParam)
 
+	sortedProducts = removeDuplicates(sortedProducts)
+
 	c.IndentedJSON(http.StatusOK, sortedProducts)
 }
 
 func sortProducts(sortMethod string) []product {
-	toSort := append([]product{}, realProducts...)
+	// toSort := append([]product{}, realProducts...)
+	toSort := realProducts
 
 	switch sortMethod {
 	case "lowest-price":
@@ -135,12 +129,12 @@ func postRefresh(c *gin.Context) {
 
 func startWebScrapers() {
 	// TODO: CHANGE THIS TO THE REAL MEMORY ARRAY <-----
-	realProducts = nil
+	realProducts = []product{}
 
 	// TODO: retrieve endpoints for web scrapers
 
 	var wg sync.WaitGroup
-	urls := []string{"https://aldi-web-scraper.onrender.com/products"}
+	urls := []string{"https://aldi-web-scraper.onrender.com/products", "https://coles-web-scraper.onrender.com/products"}
 
 	for i := range urls {
 		wg.Add(1)
@@ -150,8 +144,8 @@ func startWebScrapers() {
 			fetchProductsFromScraper(urls[i])
 		}()
 
+		wg.Wait()
 	}
-	wg.Wait()
 }
 
 func fetchProductsFromScraper(url string) {
@@ -168,17 +162,28 @@ func fetchProductsFromScraper(url string) {
 
 	// Unmarshal the JSON data into a slice of Product objects
 	var products []product
-	err = json.Unmarshal(body, &realProducts)
+	err = json.Unmarshal(body, &products)
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	print(products)
-	print("hello")
-
-	// TODO: append as product type
-	// TODO: CHANGE THIS TO THE REAL MEMORY ARRAY <-----
-	// fmt.Printf("body: %v\n", string(body))
 	defer resp.Body.Close()
-	// realProducts = append(realProducts, )
+
+	realProducts = append(realProducts, products...)
+
+}
+
+func removeDuplicates(products []product) []product {
+	encountered := map[string]struct{}{} // Map to store encountered names
+
+	// Iterate over the products slice
+	result := []product{}
+	for _, product := range products {
+		if _, ok := encountered[product.ItemName]; !ok {
+			// Add the product to the result if the name is not encountered before
+			result = append(result, product)
+			encountered[product.ItemName] = struct{}{} // Mark the name as encountered
+		}
+	}
+
+	return result
 }
